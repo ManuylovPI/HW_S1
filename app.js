@@ -1,223 +1,214 @@
-// Import Transformers.js as ES module
-import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.6/dist/transformers.min.js";
+// app.js - Client-side Sentiment Analysis Application
 
-// Application state
-let reviews = [];
+// DOM Elements
+const tokenInput = document.getElementById('token-input');
+const saveTokenBtn = document.getElementById('save-token');
+const analyzeBtn = document.getElementById('analyze-btn');
+const reviewDisplay = document.getElementById('review-display');
+const resultArea = document.getElementById('result-area');
+const statusDiv = document.getElementById('status');
+
+// Application State
 let sentimentPipeline = null;
+let reviews = [];
+let modelReady = false;
+let isAnalyzing = false;
 
-// DOM elements
-const statusMessageEl = document.getElementById('statusMessage');
-const errorContainerEl = document.getElementById('errorContainer');
-const errorMessageEl = document.getElementById('errorMessage');
-const analyzeBtn = document.getElementById('analyzeBtn');
-const reviewPlaceholderEl = document.getElementById('reviewPlaceholder');
-const reviewTextEl = document.getElementById('reviewText');
-const resultContainerEl = document.getElementById('resultContainer');
-const sentimentIconEl = document.getElementById('sentimentIcon');
-const sentimentLabelEl = document.getElementById('sentimentLabel');
-const confidenceTextEl = document.getElementById('confidenceText');
-const progressFillEl = document.getElementById('progressFill');
-
-// Initialize application on DOM load
-document.addEventListener('DOMContentLoaded', async () => {
+// Initialize the application
+async function initApp() {
+    showStatus('Loading reviews dataset...', 'loading');
+    
+    // Load saved token if available
+    const savedToken = localStorage.getItem('hf_token');
+    if (savedToken) {
+        tokenInput.value = savedToken;
+        showStatus('Using saved token for model download', 'success');
+    }
+    
+    // Load reviews from TSV file
     try {
         await loadReviews();
-        await initializeModel();
+        showStatus(`Loaded ${reviews.length} reviews successfully`, 'success');
     } catch (error) {
-        showError(`Failed to initialize application: ${error.message}`);
+        showStatus(`Error loading reviews: ${error.message}`, 'error');
+        return;
+    }
+    
+    // Initialize the sentiment analysis model
+    await initModel();
+}
+
+// Load reviews from TSV file
+async function loadReviews() {
+    return new Promise((resolve, reject) => {
+        Papa.parse('https://raw.githubusercontent.com/curiousily/Getting-Things-Done-with-Pytorch/main/data/reviews_test.tsv', {
+            download: true,
+            delimiter: '\t',
+            header: true,
+            complete: (results) => {
+                if (results.data && results.data.length > 0) {
+                    // Extract review text from the 'text' column
+                    reviews = results.data
+                        .map(row => row.text)
+                        .filter(text => text && text.trim().length > 0);
+                    
+                    if (reviews.length > 0) {
+                        resolve();
+                    } else {
+                        reject(new Error('No valid reviews found in the dataset'));
+                    }
+                } else {
+                    reject(new Error('Failed to parse reviews data'));
+                }
+            },
+            error: (error) => {
+                reject(new Error(`Failed to load reviews: ${error.message}`));
+            }
+        });
+    });
+}
+
+// Initialize the sentiment analysis model
+async function initModel() {
+    showStatus('Downloading sentiment model... This may take a moment.', 'loading');
+    
+    try {
+        // Dynamically import Transformers.js
+        const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0');
+        
+        // Configure Transformers.js with token if available
+        const token = localStorage.getItem('hf_token');
+        const config = token ? { token } : {};
+        
+        // Create the sentiment analysis pipeline
+        sentimentPipeline = await pipeline('text-classification', 
+            'Xenova/distilbert-base-uncased-finetuned-sst-2-english',
+            config
+        );
+        
+        modelReady = true;
+        showStatus('Model ready! You can now analyze reviews.', 'success');
+    } catch (error) {
+        showStatus(`Error loading model: ${error.message}`, 'error');
+        console.error('Model initialization error:', error);
+    }
+}
+
+// Save token to localStorage
+saveTokenBtn.addEventListener('click', () => {
+    const token = tokenInput.value.trim();
+    
+    if (token) {
+        localStorage.setItem('hf_token', token);
+        showStatus('Token saved successfully', 'success');
+        
+        // If model isn't ready yet, reinitialize with the new token
+        if (!modelReady) {
+            initModel();
+        }
+    } else {
+        localStorage.removeItem('hf_token');
+        showStatus('Token cleared', 'success');
     }
 });
 
-// Load and parse TSV file
-async function loadReviews() {
-    updateStatus('Loading reviews data...');
-    
-    try {
-        const response = await fetch('reviews_test.tsv');
-        if (!response.ok) {
-            throw new Error(`Failed to load TSV file: ${response.status} ${response.statusText}`);
-        }
-        
-        const tsvContent = await response.text();
-        
-        // Parse TSV using Papa Parse
-        const result = Papa.parse(tsvContent, {
-            header: true,
-            delimiter: "\t",
-            skipEmptyLines: true
-        });
-        
-        if (result.errors.length > 0) {
-            console.warn('Parse warnings:', result.errors);
-        }
-        
-        // Extract review texts from 'text' column and filter invalid entries
-        reviews = result.data
-            .map(row => row.text)
-            .filter(text => text && typeof text === 'string' && text.trim().length > 0);
-        
-        if (reviews.length === 0) {
-            throw new Error('No valid reviews found in the TSV file');
-        }
-        
-        updateStatus(`Loaded ${reviews.length} reviews successfully.`);
-    } catch (error) {
-        throw new Error(`Error loading reviews: ${error.message}`);
-    }
-}
-
-// Initialize Transformers.js model
-async function initializeModel() {
-    updateStatus('Loading sentiment analysis model (this may take 30-90 seconds on first load)...');
-    
-    try {
-        // Добавьте обработчик прогресса
-        const progressCallback = (data) => {
-            if (data.status === 'downloading') {
-                updateStatus(`Downloading model: ${data.file} (${Math.round(data.progress * 100)}%)`);
-            }
-        };
-        
-        // Инициализация с колбэком прогресса
-        sentimentPipeline = await pipeline('text-classification', 
-            'Xenova/distilbert-base-uncased-finetuned-sst-2-english',
-            { progress_callback: progressCallback }
-        );
-        
-        updateStatus('Model loaded successfully! Ready for analysis.');
-        analyzeBtn.disabled = false;
-        analyzeBtn.innerHTML = '<i class="fas fa-play-circle"></i> Analyze Random Review';
-    } catch (error) {
-        throw new Error(`Error loading model: ${error.message}`);
-    }
-}
-
 // Analyze a random review
-async function analyzeRandomReview() {
-    clearError();
+analyzeBtn.addEventListener('click', async () => {
+    if (!modelReady) {
+        showStatus('Model is still loading. Please wait...', 'error');
+        return;
+    }
+    
+    if (isAnalyzing) {
+        return;
+    }
     
     if (reviews.length === 0) {
-        showError('No reviews available for analysis');
+        showStatus('No reviews available to analyze', 'error');
         return;
     }
     
-    if (!sentimentPipeline) {
-        showError('Sentiment model is not ready yet');
-        return;
-    }
-    
-    // Set loading state
+    isAnalyzing = true;
     analyzeBtn.disabled = true;
-    analyzeBtn.innerHTML = '<span class="loading-spinner"></span> Analyzing...';
-    updateStatus('Analyzing review sentiment...');
+    analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+    
+    // Select a random review
+    const randomIndex = Math.floor(Math.random() * reviews.length);
+    const review = reviews[randomIndex];
+    
+    // Display the selected review
+    reviewDisplay.textContent = review;
+    
+    // Show analyzing status
+    showStatus('Analyzing sentiment...', 'loading');
     
     try {
-        // Select random review
-        const randomIndex = Math.floor(Math.random() * reviews.length);
-        const review = reviews[randomIndex];
+        // Run sentiment analysis locally in the browser
+        const result = await sentimentPipeline(review);
         
-        // Display review
-        reviewPlaceholderEl.style.display = 'none';
-        reviewTextEl.style.display = 'block';
-        reviewTextEl.textContent = review;
-        
-        // Hide previous result
-        resultContainerEl.style.display = 'none';
-        
-        // Run sentiment analysis
-        const results = await sentimentPipeline(review, { topk: 2 });
-        
-        // Process results
-        let sentiment = 'neutral';
-        let confidence = 0;
-        let label = '';
-        
-        if (results && results.length > 0) {
-            const primaryResult = results[0];
-            label = primaryResult.label;
-            confidence = primaryResult.score;
-            
-            // Determine sentiment category
-            if (label === 'POSITIVE' && confidence > 0.5) {
-                sentiment = 'positive';
-            } else if (label === 'NEGATIVE' && confidence > 0.5) {
-                sentiment = 'negative';
-            } else {
-                sentiment = 'neutral';
-            }
+        if (result && result.length > 0) {
+            const sentiment = result[0];
+            displaySentiment(sentiment.label, sentiment.score);
+            showStatus('Analysis complete!', 'success');
+        } else {
+            throw new Error('No sentiment result returned');
         }
-        
-        // Update UI with results
-        updateResults(sentiment, label, confidence);
-        updateStatus('Analysis complete!');
-        
     } catch (error) {
-        showError(`Analysis failed: ${error.message}`);
-        console.error('Inference error:', error);
+        showStatus(`Analysis error: ${error.message}`, 'error');
+        displaySentiment('ERROR', 0);
     } finally {
-        // Reset button state
+        isAnalyzing = false;
         analyzeBtn.disabled = false;
-        analyzeBtn.innerHTML = '<i class="fas fa-redo"></i> Analyze Another Review';
+        analyzeBtn.innerHTML = '<i class="fas fa-magic"></i> Analyze Random Review';
+    }
+});
+
+// Display sentiment result
+function displaySentiment(label, confidence) {
+    const icon = resultArea.querySelector('.sentiment-icon i');
+    const sentimentText = resultArea.querySelector('.sentiment-text');
+    const confidenceText = resultArea.querySelector('.confidence');
+    
+    // Map labels to our sentiment categories
+    let sentiment, displayLabel;
+    
+    if (label.includes('POSITIVE') || label === 'POSITIVE') {
+        sentiment = 'positive';
+        displayLabel = 'POSITIVE';
+        icon.className = 'fas fa-thumbs-up positive';
+    } else if (label.includes('NEGATIVE') || label === 'NEGATIVE') {
+        sentiment = 'negative';
+        displayLabel = 'NEGATIVE';
+        icon.className = 'fas fa-thumbs-down negative';
+    } else {
+        sentiment = 'neutral';
+        displayLabel = 'NEUTRAL';
+        icon.className = 'fas fa-question-circle neutral';
+    }
+    
+    // Update UI
+    sentimentText.textContent = displayLabel;
+    sentimentText.className = `sentiment-text ${sentiment}`;
+    
+    const confidencePercent = (confidence * 100).toFixed(1);
+    confidenceText.textContent = `${confidencePercent}% confidence`;
+}
+
+// Show status messages
+function showStatus(message, type) {
+    statusDiv.textContent = message;
+    statusDiv.className = `status ${type}`;
+    statusDiv.style.display = 'block';
+    
+    // Auto-hide success messages after 3 seconds
+    if (type === 'success') {
+        setTimeout(() => {
+            if (statusDiv.textContent === message) {
+                statusDiv.style.display = 'none';
+            }
+        }, 3000);
     }
 }
 
-// Update UI with sentiment results
-function updateResults(sentiment, label, confidence) {
-    // Set colors and icons based on sentiment
-    let iconClass, icon, color;
-    
-    switch (sentiment) {
-        case 'positive':
-            iconClass = 'sentiment-positive';
-            icon = 'fa-thumbs-up';
-            color = '#10b981';
-            break;
-        case 'negative':
-            iconClass = 'sentiment-negative';
-            icon = 'fa-thumbs-down';
-            color = '#ef4444';
-            break;
-        default:
-            iconClass = 'sentiment-neutral';
-            icon = 'fa-question-circle';
-            color = '#f59e0b';
-    }
-    
-    // Update sentiment display
-    sentimentIconEl.className = `sentiment-icon ${iconClass}`;
-    sentimentIconEl.innerHTML = `<i class="fas ${icon}"></i>`;
-    sentimentLabelEl.textContent = label.charAt(0).toUpperCase() + label.slice(1).toLowerCase();
-    
-    // Update confidence display
-    const confidencePercent = Math.round(confidence * 100);
-    confidenceTextEl.textContent = `Confidence: ${confidencePercent}%`;
-    
-    // Update progress bar
-    progressFillEl.style.width = `${confidencePercent}%`;
-    progressFillEl.style.backgroundColor = color;
-    
-    // Show result container
-    resultContainerEl.style.display = 'block';
-}
-
-// Update status message
-function updateStatus(message) {
-    statusMessageEl.textContent = message;
-    console.log(`Status: ${message}`);
-}
-
-// Show error message
-function showError(message) {
-    errorMessageEl.textContent = message;
-    errorContainerEl.style.display = 'block';
-    console.error(`Error: ${message}`);
-}
-
-// Clear error message
-function clearError() {
-    errorContainerEl.style.display = 'none';
-    errorMessageEl.textContent = '';
-}
-
-// Event listener for analyze button
-analyzeBtn.addEventListener('click', analyzeRandomReview);
+// Initialize the application when the page loads
+document.addEventListener('DOMContentLoaded', initApp);
