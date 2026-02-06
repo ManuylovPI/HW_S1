@@ -133,7 +133,7 @@ async function initializeModel() {
         
         // Create sentiment analysis pipeline
         sentimentPipeline = await pipeline('text-classification', 
-            'Xenova/distilbert-base-uncased-finetuned-sst-2-english');
+            'Xenova/bert-base-multilingual-uncased-sentiment');
         
         setStatus('Model loaded and ready for analysis!', 'ready');
         analyzeBtn.disabled = false;
