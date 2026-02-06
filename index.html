@@ -3,96 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client-Side Sentiment Analysis</title>
+    <title>Client-Side Sentiment Analyzer</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         * {
-            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
         }
         
         body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
-            padding: 20px;
+            background-color: #f5f7fa;
             color: #333;
-        }
-        
-        .container {
-            max-width: 900px;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1000px;
             margin: 0 auto;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
         }
         
         header {
-            background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%);
-            color: white;
-            padding: 25px 30px;
             text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e1e8ed;
         }
         
         h1 {
-            font-size: 2.2rem;
-            margin-bottom: 8px;
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
         }
         
         .subtitle {
+            color: #718096;
             font-size: 1.1rem;
-            opacity: 0.9;
-            font-weight: 300;
         }
         
-        .content {
-            padding: 30px;
+        .container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
         }
         
-        .section {
-            background: #f8fafc;
+        @media (min-width: 768px) {
+            .container {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .instructions {
+                grid-column: 1 / -1;
+            }
+        }
+        
+        .card {
+            background-color: white;
             border-radius: 12px;
-            padding: 22px;
-            margin-bottom: 25px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             border: 1px solid #e2e8f0;
-            transition: all 0.3s ease;
         }
         
-        .section:hover {
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-        }
-        
-        h2 {
-            color: #2d3748;
-            font-size: 1.4rem;
+        .card h2 {
+            color: #4a5568;
             margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e2e8f0;
+            font-size: 1.4rem;
             display: flex;
             align-items: center;
             gap: 10px;
         }
         
-        h2 i {
-            color: #4b6cb7;
+        .card h2 i {
+            color: #4299e1;
         }
         
-        .input-group {
-            margin-bottom: 20px;
+        .token-input {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
         
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #4a5568;
-        }
-        
-        input[type="text"] {
-            width: 100%;
+        .token-input input {
             padding: 14px;
             border: 2px solid #e2e8f0;
             border-radius: 8px;
@@ -100,71 +91,91 @@
             transition: border-color 0.3s;
         }
         
-        input[type="text"]:focus {
-            border-color: #4b6cb7;
+        .token-input input:focus {
             outline: none;
+            border-color: #4299e1;
         }
         
-        .note {
+        .token-note {
             font-size: 0.9rem;
             color: #718096;
-            margin-top: 8px;
-            font-style: italic;
+            background-color: #f7fafc;
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 4px solid #4299e1;
         }
         
-        .display-area {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            min-height: 120px;
-            border: 1px solid #e2e8f0;
-            margin-bottom: 15px;
-            white-space: pre-wrap;
-            line-height: 1.5;
-            color: #4a5568;
-        }
-        
-        .result-area {
+        .review-display {
+            min-height: 200px;
             display: flex;
-            align-items: center;
-            gap: 20px;
-            padding: 20px;
-            background: white;
+            flex-direction: column;
+        }
+        
+        .review-text {
+            flex-grow: 1;
+            background-color: #f7fafc;
+            padding: 18px;
             border-radius: 8px;
+            overflow-y: auto;
+            line-height: 1.7;
+            color: #4a5568;
             border: 1px solid #e2e8f0;
-            min-height: 120px;
         }
         
-        .sentiment-icon {
-            font-size: 3.5rem;
-            flex-shrink: 0;
+        .sentiment-result {
+            text-align: center;
+            padding: 20px;
         }
         
-        .sentiment-text {
-            font-size: 1.8rem;
-            font-weight: 700;
+        .sentiment-label {
+            font-size: 2.2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .sentiment-positive {
+            color: #38a169;
+        }
+        
+        .sentiment-negative {
+            color: #e53e3e;
+        }
+        
+        .sentiment-neutral {
+            color: #d69e2e;
         }
         
         .confidence {
-            font-size: 1.2rem;
-            color: #718096;
-            margin-top: 5px;
+            font-size: 1.3rem;
+            color: #4a5568;
+            margin-bottom: 15px;
         }
         
-        .positive {
-            color: #10b981;
+        .sentiment-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
         }
         
-        .negative {
-            color: #ef4444;
+        .icon-positive {
+            color: #38a169;
         }
         
-        .neutral {
-            color: #f59e0b;
+        .icon-negative {
+            color: #e53e3e;
         }
         
-        .btn {
-            background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%);
+        .icon-neutral {
+            color: #d69e2e;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        .analyze-btn {
+            background-color: #4299e1;
             color: white;
             border: none;
             padding: 16px 32px;
@@ -172,187 +183,145 @@
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        
-        .btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(75, 108, 183, 0.3);
-        }
-        
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        
-        .status {
-            padding: 12px 18px;
-            border-radius: 8px;
-            margin-top: 20px;
-            display: none;
-            font-weight: 500;
-        }
-        
-        .loading {
-            background-color: #dbeafe;
-            color: #1e40af;
-            border: 1px solid #bfdbfe;
-        }
-        
-        .error {
-            background-color: #fee2e2;
-            color: #b91c1c;
-            border: 1px solid #fecaca;
-        }
-        
-        .success {
-            background-color: #d1fae5;
-            color: #065f46;
-            border: 1px solid #a7f3d0;
-        }
-        
-        .instructions {
-            background-color: #f0f9ff;
-            border-left: 4px solid #3b82f6;
-            padding: 20px;
-            margin-top: 25px;
-        }
-        
-        .instructions h3 {
-            color: #1e40af;
-            margin-bottom: 12px;
+            transition: background-color 0.3s;
             display: flex;
             align-items: center;
             gap: 10px;
         }
         
+        .analyze-btn:hover {
+            background-color: #3182ce;
+        }
+        
+        .analyze-btn:disabled {
+            background-color: #a0aec0;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            text-align: center;
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        
+        .status-loading {
+            background-color: #fffaf0;
+            color: #d69e2e;
+        }
+        
+        .status-ready {
+            background-color: #f0fff4;
+            color: #38a169;
+        }
+        
+        .status-error {
+            background-color: #fff5f5;
+            color: #e53e3e;
+        }
+        
+        .instructions {
+            margin-top: 20px;
+        }
+        
         .instructions ol {
             margin-left: 20px;
-            line-height: 1.6;
+            margin-top: 10px;
         }
         
         .instructions li {
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            color: #4a5568;
         }
         
-        .instructions a {
-            color: #3b82f6;
-            text-decoration: none;
+        .instructions code {
+            background-color: #f7fafc;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            border: 1px solid #e2e8f0;
         }
         
-        .instructions a:hover {
-            text-decoration: underline;
+        .review-count {
+            font-size: 0.9rem;
+            color: #718096;
+            text-align: right;
+            margin-top: 10px;
         }
         
         footer {
             text-align: center;
-            padding: 20px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e1e8ed;
             color: #718096;
             font-size: 0.9rem;
-            border-top: 1px solid #e2e8f0;
-            margin-top: 20px;
-        }
-        
-        .model-status {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-left: 15px;
-            background-color: #e2e8f0;
-            color: #4a5568;
-        }
-        
-        .model-status.ready {
-            background-color: #d1fae5;
-            color: #065f46;
-        }
-        
-        @media (max-width: 768px) {
-            .container {
-                border-radius: 12px;
-            }
-            
-            .content {
-                padding: 20px;
-            }
-            
-            h1 {
-                font-size: 1.8rem;
-            }
-            
-            .result-area {
-                flex-direction: column;
-                text-align: center;
-                gap: 15px;
-            }
         }
     </style>
 </head>
 <body>
+    <header>
+        <h1><i class="fas fa-robot"></i> Client-Side Sentiment Analyzer</h1>
+        <p class="subtitle">Analyze product reviews locally in your browser using Transformers.js — no data sent to servers</p>
+    </header>
+    
     <div class="container">
-        <header>
-            <h1><i class="fas fa-robot"></i> Client-Side Sentiment Analysis</h1>
-            <p class="subtitle">Analyze product reviews entirely in your browser using machine learning</p>
-        </header>
-        
-        <div class="content">
-            <div class="section">
-                <h2><i class="fas fa-key"></i> Hugging Face Token (Optional)</h2>
-                <div class="input-group">
-                    <label for="token-input">Enter your Hugging Face API Token:</label>
-                    <input type="text" id="token-input" placeholder="hf_xxxxxxxxxxxxxxxxxxxx">
-                    <p class="note">Your token is stored only in your browser and is never sent to our servers. It's optional but recommended for faster model download.</p>
-                </div>
-                <button id="save-token" class="btn"><i class="fas fa-save"></i> Save Token</button>
-            </div>
-            
-            <div class="section">
-                <h2><i class="fas fa-file-alt"></i> Selected Review</h2>
-                <div id="review-display" class="display-area">
-                    Click "Analyze Random Review" to select a product review for sentiment analysis.
-                </div>
-                
-                <h2><i class="fas fa-chart-bar"></i> Sentiment Result</h2>
-                <div id="result-area" class="result-area">
-                    <div class="sentiment-icon">
-                        <i class="fas fa-question-circle neutral"></i>
-                    </div>
-                    <div>
-                        <div class="sentiment-text">No analysis yet</div>
-                        <div class="confidence">Click the button below to analyze a review</div>
-                    </div>
-                </div>
-                
-                <button id="analyze-btn" class="btn"><i class="fas fa-magic"></i> Analyze Random Review</button>
-                
-                <div id="status" class="status"></div>
-            </div>
-            
-            <div class="instructions">
-                <h3><i class="fas fa-info-circle"></i> How to get a Hugging Face Token (Optional)</h3>
-                <ol>
-                    <li>Go to <a href="https://huggingface.co" target="_blank">huggingface.co</a> and create a free account</li>
-                    <li>Click on your profile picture and select "Settings"</li>
-                    <li>Go to "Access Tokens" in the left menu</li>
-                    <li>Generate a new token with "read" access (no special permissions needed)</li>
-                    <li>Copy the token and paste it above for faster model downloads</li>
-                    <li><strong>Note:</strong> Without a token, the model will still download but may be slower</li>
-                </ol>
+        <div class="card">
+            <h2><i class="fas fa-key"></i> Hugging Face Token (Optional)</h2>
+            <div class="token-input">
+                <input type="text" id="tokenInput" placeholder="hf_xxxxxxxxxxxxxxxxxxxx">
+                <p class="token-note">Your token is stored only in your browser and is never sent to our servers. It's used only for faster model downloads from Hugging Face Hub.</p>
             </div>
         </div>
         
-        <footer>
-            <p>This application runs 100% in your browser using Transformers.js. No data is sent to external servers.</p>
-            <p>Model: Xenova/distilbert-base-uncased-finetuned-sst-2-english</p>
-        </footer>
+        <div class="card">
+            <h2><i class="fas fa-chart-bar"></i> Sentiment Result</h2>
+            <div class="sentiment-result">
+                <div class="sentiment-icon" id="sentimentIcon">
+                    <i class="fas fa-question-circle"></i>
+                </div>
+                <div class="sentiment-label" id="sentimentLabel">Awaiting Analysis</div>
+                <div class="confidence" id="confidenceScore">Click "Analyze Random Review" to begin</div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2><i class="fas fa-comment-alt"></i> Selected Review</h2>
+            <div class="review-display">
+                <div class="review-text" id="reviewText">
+                    No review selected yet. Click "Analyze Random Review" to load a random product review.
+                </div>
+                <div class="review-count" id="reviewCount"></div>
+            </div>
+        </div>
+        
+        <div class="instructions card">
+            <h2><i class="fas fa-info-circle"></i> How It Works</h2>
+            <ol>
+                <li>Enter your Hugging Face token (optional, for faster model loading)</li>
+                <li>Click "Analyze Random Review" to load a random product review</li>
+                <li>The AI model analyzes sentiment directly in your browser (no API calls)</li>
+                <li>Results appear instantly with confidence score and visual indicators</li>
+                <li>To get a token: <a href="https://huggingface.co/settings/tokens" target="_blank">Create one at Hugging Face</a> (free account required)</li>
+            </ol>
+        </div>
     </div>
     
+    <div class="controls">
+        <button id="analyzeBtn" class="analyze-btn">
+            <i class="fas fa-play-circle"></i> Analyze Random Review
+        </button>
+    </div>
+    
+    <div id="status" class="status"></div>
+    
+    <footer>
+        <p>Powered by Transformers.js | Model: distilbert-base-uncased-finetuned-sst-2-english | All processing happens locally in your browser</p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script type="module" src="app.js"></script>
 </body>
 </html>
