@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client-Side Sentiment Analyzer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+        
+        main {
+            padding: 30px;
+        }
+        
+        .review-container {
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            min-height: 150px;
+        }
+        
+        .review-placeholder {
+            color: #64748b;
+            text-align: center;
+            font-style: italic;
+        }
+        
+        .review-text {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            color: #334155;
+        }
+        
+        .result-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            display: none;
+        }
+        
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .sentiment-icon {
+            font-size: 2.5rem;
+        }
+        
+        .sentiment-positive {
+            color: #10b981;
+        }
+        
+        .sentiment-negative {
+            color: #ef4444;
+        }
+        
+        .sentiment-neutral {
+            color: #f59e0b;
+        }
+        
+        .sentiment-label {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+        
+        .confidence {
+            font-size: 1.1rem;
+            color: #64748b;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        button {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .analyze-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        
+        .analyze-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .status-container {
+            background: #f0f9ff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 5px solid #0ea5e9;
+        }
+        
+        .status-title {
+            font-weight: 600;
+            color: #0369a1;
+            margin-bottom: 8px;
+        }
+        
+        .status-message {
+            color: #0c4a6e;
+        }
+        
+        .error-container {
+            background: #fef2f2;
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 5px solid #ef4444;
+            display: none;
+        }
+        
+        .error-title {
+            font-weight: 600;
+            color: #dc2626;
+            margin-bottom: 8px;
+        }
+        
+        .error-message {
+            color: #991b1b;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #64748b;
+            font-size: 0.9rem;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-brain"></i> Sentiment Analyzer</h1>
+            <p class="subtitle">Client-side sentiment analysis of product reviews using Transformers.js</p>
+        </header>
+        
+        <main>
+            <div class="status-container">
+                <div class="status-title">System Status</div>
+                <div class="status-message" id="statusMessage">Initializing application...</div>
+            </div>
+            
+            <div class="error-container" id="errorContainer">
+                <div class="error-title">Error</div>
+                <div class="error-message" id="errorMessage"></div>
+            </div>
+            
+            <div class="review-container">
+                <div class="review-placeholder" id="reviewPlaceholder">
+                    Click "Analyze Random Review" to start sentiment analysis
+                </div>
+                <div class="review-text" id="reviewText" style="display: none;"></div>
+            </div>
+            
+            <div class="result-container" id="resultContainer">
+                <div class="result-header">
+                    <div class="sentiment-icon" id="sentimentIcon"></div>
+                    <div>
+                        <div class="sentiment-label" id="sentimentLabel"></div>
+                        <div class="confidence" id="confidenceText"></div>
+                    </div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+            
+            <div class="buttons">
+                <button class="analyze-btn" id="analyzeBtn" disabled>
+                    <span>Analyze Random Review</span>
+                </button>
+            </div>
+        </main>
+        
+        <footer>
+            <p>Powered by Transformers.js | Model: Xenova/distilbert-base-uncased-finetuned-sst-2-english</p>
+            <p>All processing happens entirely in your browser - no data is sent to any server</p>
+        </footer>
+    </div>
+    
+    <script type="module" src="app.js"></script>
+</body>
+</html>
