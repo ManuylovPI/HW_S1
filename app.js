@@ -68,12 +68,20 @@ async function loadReviews() {
 
 // Initialize Transformers.js model
 async function initializeModel() {
-    updateStatus('Loading sentiment analysis model...');
+    updateStatus('Loading sentiment analysis model (this may take 30-90 seconds on first load)...');
     
     try {
-        // Initialize the pipeline with a sentiment analysis model
+        // Добавьте обработчик прогресса
+        const progressCallback = (data) => {
+            if (data.status === 'downloading') {
+                updateStatus(`Downloading model: ${data.file} (${Math.round(data.progress * 100)}%)`);
+            }
+        };
+        
+        // Инициализация с колбэком прогресса
         sentimentPipeline = await pipeline('text-classification', 
-            'Xenova/distilbert-base-uncased-finetuned-sst-2-english'
+            'Xenova/distilbert-base-uncased-finetuned-sst-2-english',
+            { progress_callback: progressCallback }
         );
         
         updateStatus('Model loaded successfully! Ready for analysis.');
