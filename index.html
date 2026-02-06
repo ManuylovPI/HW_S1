@@ -5,323 +5,388 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Client-Side Sentiment Analyzer</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-family: 'Segoe UI', system-ui, sans-serif;
         }
         
         body {
-            background-color: #f5f7fa;
-            color: #333;
-            line-height: 1.6;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
             padding: 20px;
-            max-width: 1000px;
-            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            padding: 40px;
         }
         
         header {
             text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #e1e8ed;
+            margin-bottom: 40px;
         }
         
         h1 {
             color: #2d3748;
+            font-size: 2.8rem;
             margin-bottom: 10px;
-            font-size: 2.5rem;
+            background: linear-gradient(90deg, #4f46e5, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
         
         .subtitle {
             color: #718096;
             font-size: 1.1rem;
-        }
-        
-        .container {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 25px;
-        }
-        
-        @media (min-width: 768px) {
-            .container {
-                grid-template-columns: 1fr 1fr;
-            }
-            
-            .instructions {
-                grid-column: 1 / -1;
-            }
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
         }
         
         .card {
-            background-color: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
             border: 1px solid #e2e8f0;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
         
-        .card h2 {
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        }
+        
+        h2 {
             color: #4a5568;
-            margin-bottom: 15px;
-            font-size: 1.4rem;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
-            gap: 10px;
-        }
-        
-        .card h2 i {
-            color: #4299e1;
-        }
-        
-        .token-input {
-            display: flex;
-            flex-direction: column;
             gap: 12px;
         }
         
-        .token-input input {
-            padding: 14px;
+        h2 i {
+            color: #4f46e5;
+        }
+        
+        .token-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .token-input-group {
+            display: flex;
+            gap: 12px;
+        }
+        
+        input[type="text"] {
+            flex: 1;
+            padding: 16px 20px;
             border: 2px solid #e2e8f0;
-            border-radius: 8px;
+            border-radius: 12px;
             font-size: 1rem;
-            transition: border-color 0.3s;
+            transition: all 0.3s;
+            background: white;
         }
         
-        .token-input input:focus {
+        input[type="text"]:focus {
             outline: none;
-            border-color: #4299e1;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
         
-        .token-note {
-            font-size: 0.9rem;
-            color: #718096;
-            background-color: #f7fafc;
-            padding: 12px;
-            border-radius: 6px;
-            border-left: 4px solid #4299e1;
+        .note {
+            background: #e0e7ff;
+            padding: 15px 20px;
+            border-radius: 12px;
+            color: #3730a3;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            border-left: 4px solid #4f46e5;
+        }
+        
+        .instructions {
+            background: #f0f9ff;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 15px;
+            border: 1px solid #bae6fd;
+        }
+        
+        .instructions h3 {
+            color: #0369a1;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        
+        .instructions ol {
+            padding-left: 20px;
+            color: #475569;
+            line-height: 1.8;
         }
         
         .review-display {
-            min-height: 200px;
-            display: flex;
-            flex-direction: column;
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            min-height: 180px;
+            border: 2px dashed #cbd5e0;
+            margin-bottom: 30px;
+            position: relative;
         }
         
-        .review-text {
-            flex-grow: 1;
-            background-color: #f7fafc;
-            padding: 18px;
-            border-radius: 8px;
-            overflow-y: auto;
-            line-height: 1.7;
+        .review-display h3 {
             color: #4a5568;
-            border: 1px solid #e2e8f0;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
         }
         
-        .sentiment-result {
+        .review-content {
+            font-size: 1.1rem;
+            line-height: 1.7;
+            color: #2d3748;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+        
+        .placeholder {
+            color: #a0aec0;
+            font-style: italic;
             text-align: center;
-            padding: 20px;
+            padding: 40px 20px;
         }
         
-        .sentiment-label {
-            font-size: 2.2rem;
-            font-weight: bold;
+        .result-section {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            border: 2px solid #e2e8f0;
+            margin-bottom: 30px;
+            min-height: 140px;
+        }
+        
+        .result-content {
+            flex: 1;
+        }
+        
+        .result-content h3 {
+            color: #4a5568;
             margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .sentiment-display {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
         }
         
         .sentiment-positive {
-            color: #38a169;
+            color: #10b981;
         }
         
         .sentiment-negative {
-            color: #e53e3e;
+            color: #ef4444;
         }
         
         .sentiment-neutral {
-            color: #d69e2e;
+            color: #f59e0b;
         }
         
         .confidence {
-            font-size: 1.3rem;
-            color: #4a5568;
-            margin-bottom: 15px;
+            color: #6b7280;
+            font-size: 1.1rem;
         }
         
         .sentiment-icon {
-            font-size: 4rem;
-            margin-bottom: 15px;
+            font-size: 4.5rem;
+            width: 120px;
+            display: flex;
+            justify-content: center;
         }
         
         .icon-positive {
-            color: #38a169;
+            color: #10b981;
         }
         
         .icon-negative {
-            color: #e53e3e;
+            color: #ef4444;
         }
         
         .icon-neutral {
-            color: #d69e2e;
+            color: #f59e0b;
         }
         
-        .controls {
-            display: flex;
-            justify-content: center;
-            margin-top: 20px;
+        .control-section {
+            text-align: center;
+            margin-top: 30px;
         }
         
         .analyze-btn {
-            background-color: #4299e1;
+            background: linear-gradient(90deg, #4f46e5, #7c3aed);
             color: white;
             border: none;
-            padding: 16px 32px;
-            font-size: 1.1rem;
-            border-radius: 8px;
-            cursor: pointer;
+            padding: 20px 50px;
+            font-size: 1.3rem;
             font-weight: 600;
-            transition: background-color 0.3s;
-            display: flex;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
             align-items: center;
-            gap: 10px;
+            gap: 15px;
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.2);
         }
         
-        .analyze-btn:hover {
-            background-color: #3182ce;
+        .analyze-btn:hover:not(:disabled) {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(79, 70, 229, 0.3);
         }
         
         .analyze-btn:disabled {
-            background-color: #a0aec0;
+            opacity: 0.7;
             cursor: not-allowed;
         }
         
         .status {
             text-align: center;
-            margin-top: 15px;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: 500;
+            margin-top: 20px;
+            color: #6b7280;
+            font-size: 1rem;
+            min-height: 24px;
         }
         
         .status-loading {
-            background-color: #fffaf0;
-            color: #d69e2e;
+            color: #f59e0b;
         }
         
         .status-ready {
-            background-color: #f0fff4;
-            color: #38a169;
+            color: #10b981;
         }
         
         .status-error {
-            background-color: #fff5f5;
-            color: #e53e3e;
-        }
-        
-        .instructions {
-            margin-top: 20px;
-        }
-        
-        .instructions ol {
-            margin-left: 20px;
-            margin-top: 10px;
-        }
-        
-        .instructions li {
-            margin-bottom: 8px;
-            color: #4a5568;
-        }
-        
-        .instructions code {
-            background-color: #f7fafc;
-            padding: 3px 6px;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 0.9rem;
-            border: 1px solid #e2e8f0;
+            color: #ef4444;
         }
         
         .review-count {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #4f46e5;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
             font-size: 0.9rem;
-            color: #718096;
-            text-align: right;
-            margin-top: 10px;
+            font-weight: 600;
         }
         
-        footer {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e1e8ed;
-            color: #718096;
-            font-size: 0.9rem;
+        @media (max-width: 768px) {
+            .container {
+                padding: 25px;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            .token-input-group {
+                flex-direction: column;
+            }
+            
+            .result-section {
+                flex-direction: column;
+                gap: 25px;
+                text-align: center;
+            }
+            
+            .sentiment-icon {
+                order: -1;
+            }
         }
     </style>
 </head>
 <body>
-    <header>
-        <h1><i class="fas fa-robot"></i> Client-Side Sentiment Analyzer</h1>
-        <p class="subtitle">Analyze product reviews locally in your browser using Transformers.js — no data sent to servers</p>
-    </header>
-    
     <div class="container">
+        <header>
+            <h1><i class="fas fa-robot"></i> Client-Side Sentiment Analyzer</h1>
+            <p class="subtitle">Analyze product review sentiment entirely in your browser using machine learning. No data is sent to external servers.</p>
+        </header>
+        
         <div class="card">
             <h2><i class="fas fa-key"></i> Hugging Face Token (Optional)</h2>
-            <div class="token-input">
-                <input type="text" id="tokenInput" placeholder="hf_xxxxxxxxxxxxxxxxxxxx">
-                <p class="token-note">Your token is stored only in your browser and is never sent to our servers. It's used only for faster model downloads from Hugging Face Hub.</p>
-            </div>
-        </div>
-        
-        <div class="card">
-            <h2><i class="fas fa-chart-bar"></i> Sentiment Result</h2>
-            <div class="sentiment-result">
-                <div class="sentiment-icon" id="sentimentIcon">
-                    <i class="fas fa-question-circle"></i>
+            <div class="token-section">
+                <div class="token-input-group">
+                    <input type="text" id="tokenInput" placeholder="Enter your Hugging Face API Token (optional)">
+                    <button id="saveTokenBtn" class="analyze-btn" style="padding: 16px 30px; font-size: 1rem;">Save Token</button>
                 </div>
-                <div class="sentiment-label" id="sentimentLabel">Awaiting Analysis</div>
-                <div class="confidence" id="confidenceScore">Click "Analyze Random Review" to begin</div>
+                <div class="note">
+                    <i class="fas fa-info-circle"></i> Your token is stored only in your browser and is never sent to our servers. It's optional but recommended for faster model download.
+                </div>
+                <div class="instructions">
+                    <h3>How to get a Hugging Face token:</h3>
+                    <ol>
+                        <li>Go to <a href="https://huggingface.co" target="_blank">huggingface.co</a> and create an account</li>
+                        <li>Click on your profile picture → "Settings" → "Access Tokens"</li>
+                        <li>Create a new token with "read" access (no special permissions needed)</li>
+                        <li>Copy and paste it above (optional but recommended)</li>
+                    </ol>
+                </div>
             </div>
         </div>
         
         <div class="card">
-            <h2><i class="fas fa-comment-alt"></i> Selected Review</h2>
+            <h2><i class="fas fa-file-alt"></i> Selected Review</h2>
             <div class="review-display">
-                <div class="review-text" id="reviewText">
-                    No review selected yet. Click "Analyze Random Review" to load a random product review.
+                <h3>Selected Review:</h3>
+                <div id="reviewContent" class="review-content placeholder">
+                    No review selected yet. Click "Analyze Random Review" to begin.
                 </div>
-                <div class="review-count" id="reviewCount"></div>
+                <div id="reviewCount" class="review-count" style="display: none;"></div>
             </div>
         </div>
         
-        <div class="instructions card">
-            <h2><i class="fas fa-info-circle"></i> How It Works</h2>
-            <ol>
-                <li>Enter your Hugging Face token (optional, for faster model loading)</li>
-                <li>Click "Analyze Random Review" to load a random product review</li>
-                <li>The AI model analyzes sentiment directly in your browser (no API calls)</li>
-                <li>Results appear instantly with confidence score and visual indicators</li>
-                <li>To get a token: <a href="https://huggingface.co/settings/tokens" target="_blank">Create one at Hugging Face</a> (free account required)</li>
-            </ol>
+        <div class="card">
+            <h2><i class="fas fa-chart-bar"></i> Sentiment Analysis Result</h2>
+            <div class="result-section">
+                <div class="result-content">
+                    <h3>Analysis Result:</h3>
+                    <div id="sentimentDisplay" class="sentiment-display">--</div>
+                    <div id="confidenceDisplay" class="confidence">Click "Analyze Random Review" to see results</div>
+                </div>
+                <div class="sentiment-icon">
+                    <i id="sentimentIcon" class="fas fa-question-circle"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <button id="analyzeBtn" class="analyze-btn" disabled>
+                <i class="fas fa-play-circle"></i> Analyze Random Review
+            </button>
+            <div id="status" class="status">Initializing sentiment analyzer...</div>
         </div>
     </div>
-    
-    <div class="controls">
-        <button id="analyzeBtn" class="analyze-btn">
-            <i class="fas fa-play-circle"></i> Analyze Random Review
-        </button>
-    </div>
-    
-    <div id="status" class="status"></div>
-    
-    <footer>
-        <p>Powered by Transformers.js | Model: distilbert-base-uncased-finetuned-sst-2-english | All processing happens locally in your browser</p>
-    </footer>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script type="module" src="app.js"></script>
 </body>
 </html>
